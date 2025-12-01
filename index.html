@@ -107,10 +107,11 @@
         let gameOverSound = document.getElementById('gameOverSound');
         let musicEnabled = false;
         let soundEffectsEnabled = true;
+        let backgroundMusicWasPlaying = false;
         
         // Função para tocar música de fundo
         const playBackgroundMusic = () => {
-            if (musicEnabled) {
+            if (musicEnabled && backgroundMusic.paused) {
                 backgroundMusic.volume = 0.3;
                 backgroundMusic.play().catch(e => {
                     console.log("Autoplay bloqueado. Clique para ativar o som.");
@@ -123,9 +124,34 @@
             backgroundMusic.pause();
         };
         
+        // Função para controlar música de fundo quando efeitos especiais tocam
+        const handleSpecialSoundPlay = (soundElement) => {
+            // Salvar se a música de fundo estava tocando
+            backgroundMusicWasPlaying = !backgroundMusic.paused && musicEnabled;
+            
+            // Pausar música de fundo
+            if (backgroundMusicWasPlaying) {
+                pauseBackgroundMusic();
+            }
+            
+            // Configurar para retomar música de fundo quando o efeito terminar
+            soundElement.onended = () => {
+                if (backgroundMusicWasPlaying && musicEnabled) {
+                    setTimeout(() => {
+                        playBackgroundMusic();
+                    }, 500); // Pequeno delay para evitar sobreposição
+                }
+            };
+        };
+        
         // Função para tocar efeito sonoro
         const playSound = (soundElement) => {
             if (soundEffectsEnabled) {
+                // Se for som de vitória ou derrota, controlar música de fundo
+                if (soundElement === victorySound || soundElement === gameOverSound) {
+                    handleSpecialSoundPlay(soundElement);
+                }
+                
                 soundElement.currentTime = 0;
                 soundElement.volume = 0.5;
                 soundElement.play().catch(e => console.log("Erro ao tocar som"));
@@ -204,7 +230,7 @@
                 concept: "Suserania e Vassalagem",
                 options: [
                     {
-                        text: "Ajoelhar e jurar leidalidade",
+                        text: "Ajoelhar e jurar lealdade",
                         effect: { gold: -10, army: +20, church: 0, people: 0 },
                         feedback: "Decisão Correta. No feudalismo, o poder é descentralizado, mas conectado por laços de fidelidade. Você perdeu ouro com os presentes, mas ganhou a proteção militar."
                     },
@@ -332,7 +358,7 @@
                     {
                         text: "Isolar o Castelo",
                         effect: { gold: 0, army: -10, church: 0, people: -40 },
-                        feedback: "Sobrevivência fria. Você se isolou enquanto os servos morriam."
+                        feedback: "Você liderou seu feudo bravamente! Sobreviveu a implacável peste negra e está preparado para a modernidade!"
                     },
                     {
                         text: "Rezar em multidão",
@@ -431,6 +457,10 @@
             } else {
                 currentScenarioIndex++;
                 gameState = 'playing';
+                // Se música estava habilitada e não está tocando, retomar
+                if (musicEnabled && backgroundMusic.paused) {
+                    playBackgroundMusic();
+                }
             }
             renderGame();
         };
@@ -445,6 +475,10 @@
             pendingGameOverCheck = false;
             if (window.pendingLossReason) {
                 delete window.pendingLossReason;
+            }
+            // Retomar música de fundo se habilitada
+            if (musicEnabled && backgroundMusic.paused) {
+                playBackgroundMusic();
             }
             renderGame();
         };
