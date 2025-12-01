@@ -1,1 +1,721 @@
-test
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ecos do Feudo - RPG Medieval</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=MedievalSharp&display=swap');
+        
+        .font-serif {
+            font-family: 'Cinzel', serif;
+        }
+        
+        .border-double {
+            border-style: double;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes zoomIn {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        
+        @keyframes slideInFromRight {
+            from { transform: translateX(20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .animate-in {
+            animation-duration: 0.5s;
+            animation-fill-mode: both;
+        }
+        
+        .fade-in {
+            animation-name: fadeIn;
+        }
+        
+        .zoom-in {
+            animation-name: zoomIn;
+        }
+        
+        .slide-in-from-right {
+            animation-name: slideInFromRight;
+        }
+        
+        /* Estilo para o botão de música */
+        .music-btn {
+            transition: all 0.3s ease;
+        }
+        
+        .music-btn:hover {
+            transform: scale(1.1);
+        }
+        
+        .pulse-glow {
+            animation: pulse-glow 2s infinite;
+        }
+        
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 5px #D4AF37; }
+            50% { box-shadow: 0 0 20px #D4AF37, 0 0 30px #FFD700; }
+        }
+    </style>
+</head>
+<body class="bg-[#2c241b] min-h-screen p-4">
+    <div id="root"></div>
+    
+    <!-- Elemento de áudio para música de fundo -->
+    <audio id="backgroundMusic" loop>
+        <source src="assets/audio/background-music.mp3" type="audio/mpeg">
+        <source src="assets/audio/background-music.ogg" type="audio/ogg">
+        Seu navegador não suporta o elemento de áudio.
+    </audio>
+    
+    <!-- Elemento de áudio para efeitos sonoros -->
+    <audio id="clickSound">
+        <source src="assets/audio/click.mp3" type="audio/mpeg">
+        <source src="assets/audio/click.ogg" type="audio/ogg">
+    </audio>
+    
+    <audio id="victorySound">
+        <source src="assets/audio/victory.mp3" type="audio/mpeg">
+        <source src="assets/audio/victory.ogg" type="audio/ogg">
+    </audio>
+    
+    <audio id="gameOverSound">
+        <source src="assets/audio/game-over.mp3" type="audio/mpeg">
+        <source src="assets/audio/game-over.ogg" type="audio/ogg">
+    </audio>
+
+    <script type="module">
+        // Inicializar ícones Lucide
+        lucide.createIcons();
+        
+        // --- VARIÁVEIS DE ÁUDIO ---
+        let backgroundMusic = document.getElementById('backgroundMusic');
+        let clickSound = document.getElementById('clickSound');
+        let victorySound = document.getElementById('victorySound');
+        let gameOverSound = document.getElementById('gameOverSound');
+        let musicEnabled = false;
+        let soundEffectsEnabled = true;
+        
+        // Função para tocar música de fundo
+        const playBackgroundMusic = () => {
+            if (musicEnabled) {
+                backgroundMusic.volume = 0.3;
+                backgroundMusic.play().catch(e => {
+                    console.log("Autoplay bloqueado. Clique para ativar o som.");
+                });
+            }
+        };
+        
+        // Função para pausar música de fundo
+        const pauseBackgroundMusic = () => {
+            backgroundMusic.pause();
+        };
+        
+        // Função para tocar efeito sonoro
+        const playSound = (soundElement) => {
+            if (soundEffectsEnabled) {
+                soundElement.currentTime = 0;
+                soundElement.volume = 0.5;
+                soundElement.play().catch(e => console.log("Erro ao tocar som"));
+            }
+        };
+        
+        // --- FUNÇÕES UTILITÁRIAS ---
+        const shuffleArray = (array) => {
+            const newArray = [...array];
+            for (let i = newArray.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+            }
+            return newArray;
+        };
+
+        // --- COMPONENTE DE ARTE MEDIEVAL ---
+        const MedievalArt = ({ scenarioId }) => {
+            const Frame = ({ children, bgColor = "bg-blue-900" }) => `
+                <div class="w-full h-full ${bgColor} relative overflow-hidden border-[6px] border-[#D4AF37] shadow-inner flex items-center justify-center">
+                    <div class="absolute inset-0 opacity-10 bg-[radial-gradient(circle,transparent_20%,#000_120%)] pointer-events-none"></div>
+                    ${children}
+                    <div class="absolute top-0 left-0 w-4 h-4 border-t-4 border-l-4 border-[#D4AF37]"></div>
+                    <div class="absolute top-0 right-0 w-4 h-4 border-t-4 border-r-4 border-[#D4AF37]"></div>
+                    <div class="absolute bottom-0 left-0 w-4 h-4 border-b-4 border-l-4 border-[#D4AF37]"></div>
+                    <div class="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-[#D4AF37]"></div>
+                </div>
+            `;
+
+            // Usando imagens locais da pasta assets/img
+            const imageUrls = {
+                1: "assets/img/scenario-1.png",      // O Juramento (Rei e Vassalo)
+                2: "assets/img/scenario-2.png",      // A Colheita (Cobrança de Impostos)
+                3: "assets/img/scenario-3.png",      // O Poder da Igreja (Catedral)
+                4: "assets/img/scenario-4.png",      // Conflito de Classes (Servo vs Cavaleiro)
+                5: "assets/img/scenario-5.png",      // Festa do Padroeiro
+                6: "assets/img/scenario-6.png",      // A Cruzada
+                7: "assets/img/scenario-7.png",      // A Crise Final (Peste Negra)
+                8: "assets/img/scenario-8.png",      // O Renascimento Comercial (Burgueses)
+                victory: "assets/img/victory.png"    // Imagem de vitória
+            };
+
+            // Imagens de fallback base64 para caso as locais não carreguem
+            const fallbackImages = {
+                1: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400'%3E%3Crect width='600' height='400' fill='%231a237e'/%3E%3Ctext x='300' y='200' font-family='Arial' font-size='24' fill='white' text-anchor='middle'%3ECenário 1: O Juramento%3C/text%3E%3C/svg%3E",
+                2: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400'%3E%3Crect width='600' height='400' fill='%231a237e'/%3E%3Ctext x='300' y='200' font-family='Arial' font-size='24' fill='white' text-anchor='middle'%3ECenário 2: A Colheita%3C/text%3E%3C/svg%3E",
+                3: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400'%3E%3Crect width='600' height='400' fill='%231a237e'/%3E%3Ctext x='300' y='200' font-family='Arial' font-size='24' fill='white' text-anchor='middle'%3ECenário 3: O Poder da Igreja%3C/text%3E%3C/svg%3E",
+                4: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400'%3E%3Crect width='600' height='400' fill='%231a237e'/%3E%3Ctext x='300' y='200' font-family='Arial' font-size='24' fill='white' text-anchor='middle'%3ECenário 4: Conflito de Classes%3C/text%3E%3C/svg%3E",
+                5: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400'%3E%3Crect width='600' height='400' fill='%231a237e'/%3E%3Ctext x='300' y='200' font-family='Arial' font-size='24' fill='white' text-anchor='middle'%3ECenário 5: Festa do Padroeiro%3C/text%3E%3C/svg%3E",
+                6: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400'%3E%3Crect width='600' height='400' fill='%231a237e'/%3E%3Ctext x='300' y='200' font-family='Arial' font-size='24' fill='white' text-anchor='middle'%3ECenário 6: A Cruzada%3C/text%3E%3C/svg%3E",
+                7: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400'%3E%3Crect width='600' height='400' fill='%231a237e'/%3E%3Ctext x='300' y='200' font-family='Arial' font-size='24' fill='white' text-anchor='middle'%3ECenário 7: A Peste Negra%3C/text%3E%3C/svg%3E",
+                8: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400'%3E%3Crect width='600' height='400' fill='%231a237e'/%3E%3Ctext x='300' y='200' font-family='Arial' font-size='24' fill='white' text-anchor='middle'%3ECenário 8: Renascimento Comercial%3C/text%3E%3C/svg%3E",
+                victory: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400'%3E%3Crect width='600' height='400' fill='%23b8860b'/%3E%3Ctext x='300' y='200' font-family='Arial' font-size='32' fill='white' text-anchor='middle' font-weight='bold'%3EVITÓRIA!%3C/text%3E%3Ctext x='300' y='240' font-family='Arial' font-size='20' fill='white' text-anchor='middle'%3EDinastia Lendária%3C/text%3E%3C/svg%3E"
+            };
+
+            const currentImageUrl = imageUrls[scenarioId] || (scenarioId === 'victory' ? imageUrls.victory : imageUrls[scenarioId]);
+            const fallbackImage = fallbackImages[scenarioId] || (scenarioId === 'victory' ? fallbackImages.victory : fallbackImages[scenarioId]);
+
+            return Frame({
+                bgColor: scenarioId === 'victory' ? "bg-[#b8860b]" : "bg-[#1a237e]",
+                children: currentImageUrl 
+                    ? `<img src="${currentImageUrl}" 
+                           alt="${scenarioId === 'victory' ? 'Vitória - Dinastia Lendária' : `Cenário ${scenarioId}`}" 
+                           class="w-full h-full object-cover" 
+                           onerror="this.src='${fallbackImage}'">`
+                    : `<img src="${fallbackImage}" alt="Imagem do cenário" class="w-full h-full object-cover">`
+            });
+        };
+
+        // --- DADOS DO JOGO ---
+        const baseScenarios = [
+            {
+                id: 1,
+                title: "O Juramento",
+                description: "O Rei exige sua vassalagem. Sem a proteção dele, seu feudo será invadido. O que você faz?",
+                concept: "Suserania e Vassalagem",
+                options: [
+                    {
+                        text: "Ajoelhar e jurar leidalidade",
+                        effect: { gold: -10, army: +20, church: 0, people: 0 },
+                        feedback: "Decisão Correta. No feudalismo, o poder é descentralizado, mas conectado por laços de fidelidade. Você perdeu ouro com os presentes, mas ganhou a proteção militar."
+                    },
+                    {
+                        text: "Recusar e ser independente",
+                        effect: { gold: 0, army: -50, church: -10, people: +10 },
+                        feedback: "Erro Histórico. Um senhor feudal isolado é presa fácil. Seus vizinhos veem isso como fraqueza e preparam a invasão."
+                    }
+                ]
+            },
+            {
+                id: 2,
+                title: "A Colheita e os Tributos",
+                description: "Os servos colheram muito trigo. Para manter o castelo forte e o exército armado, você precisa de recursos.",
+                concept: "Exploração Feudal",
+                options: [
+                    {
+                        text: "Cobrar Talha e Corveia",
+                        effect: { gold: +30, army: +5, church: 0, people: -25 },
+                        feedback: "Decisão de um Nobre. Você encheu os cofres cobrando parte da produção (Talha) e trabalho gratuito (Corveia). O povo está insatisfeito, mas o feudo enriqueceu."
+                    },
+                    {
+                        text: "Não cobrar impostos",
+                        effect: { gold: -15, army: -10, church: 0, people: +20 },
+                        feedback: "Atitude Incomum. Os servos estão felizes, mas você não tem dinheiro para pagar ferreiros ou soldados. Sua autoridade enfraquece."
+                    }
+                ]
+            },
+            {
+                id: 5,
+                title: "A Festa do Padroeiro",
+                description: "O povo está exausto e irritado com os impostos. Uma revolta camponesa pode surgir. O dia de Santo Antônio se aproxima.",
+                concept: "Religião como Coesão Social",
+                options: [
+                    {
+                        text: "Oferecer um Grande Banquete",
+                        effect: { gold: -15, army: 0, church: +10, people: +40 },
+                        feedback: "Estratégia Perfeita. A religião atua como o 'cimento' da sociedade. Ao promover a festa, você reforça que a ordem social é vontade divina."
+                    },
+                    {
+                        text: "Mandar a guarda reprimir murmúrios",
+                        effect: { gold: 0, army: +10, church: -10, people: -40 },
+                        feedback: "Tirania perigosa. Sem a válvula de escape da religião e das festas, o ódio do povo não se dissipa. Eles agora conspiram contra você."
+                    }
+                ]
+            },
+            {
+                id: 3,
+                title: "O Poder da Igreja",
+                description: "O Bispo, vendo seu sucesso, exige ouro para construir uma nova Catedral para glória de Deus.",
+                concept: "Teocentrismo",
+                options: [
+                    {
+                        text: "Doar ouro à Igreja",
+                        effect: { gold: -20, army: 0, church: +40, people: +5 },
+                        feedback: "Você garantiu seu lugar no céu. Na Idade Média, o Teocentrismo (Deus no centro) era absoluto."
+                    },
+                    {
+                        text: "Negar a doação",
+                        effect: { gold: +10, army: 0, church: -40, people: -10 },
+                        feedback: "Perigoso. Ir contra a Igreja pode levar à excomunhão. Sem a bênção divina, seus súditos podem questionar seu direito de governar."
+                    }
+                ]
+            },
+            {
+                id: 4,
+                title: "Conflito de Classes",
+                description: "Um de seus cavaleiros agrediu um servo. O servo pede justiça. Se você punir o cavaleiro, a nobreza se ofenderá.",
+                concept: "Sociedade Estamental",
+                options: [
+                    {
+                        text: "Apoiar o Cavaleiro",
+                        effect: { gold: 0, army: +20, church: 0, people: -30 },
+                        feedback: "Você manteve a ordem. A sociedade é desigual por natureza divina."
+                    },
+                    {
+                        text: "Punir o Cavaleiro",
+                        effect: { gold: 0, army: -30, church: 0, people: +20 },
+                        feedback: "Impensável para a época. Seus cavaleiros se sentem traídos. Um senhor feudal sem o apoio da sua tropa não dura muito tempo."
+                    }
+                ]
+            },
+            {
+                id: 6,
+                title: "A Cruzada",
+                description: "O Papa convoca os nobres para libertar Jerusalém. É um dever religioso e uma chance de glória.",
+                concept: "Guerras Santas",
+                options: [
+                    {
+                        text: "Ir para a Guerra",
+                        effect: { gold: -25, army: -20, church: +30, people: 0 },
+                        feedback: "Deus o quer! Você cumpre seu papel de 'Bellatore'. O custo é alto, mas a glória é eterna."
+                    },
+                    {
+                        text: "Ficar em casa",
+                        effect: { gold: 0, army: +10, church: -30, people: +10 },
+                        feedback: "Sua recusa é vista como fraqueza espiritual. A Igreja pode questionar sua fé e influenciar outros nobres contra você."
+                    }
+                ]
+            },
+            {
+                id: 8,
+                title: "O Renascimento Comercial",
+                description: "O comércio volta a florescer. Mercadores pedem para criar um Burgo (cidade murada) em suas terras.",
+                concept: "O Início da Mudança",
+                options: [
+                    {
+                        text: "Aceitar o Burgo",
+                        effect: { gold: +50, army: 0, church: -10, people: +20 },
+                        feedback: "O Futuro. O comércio traz moedas de volta e o feudalismo ganha um sopro de riqueza."
+                    },
+                    {
+                        text: "Expulsar mercadores",
+                        effect: { gold: -20, army: +10, church: +10, people: -10 },
+                        feedback: "Atraso. Você tenta manter o velho mundo agrário, mas o isolamento custa caro."
+                    }
+                ]
+            },
+            {
+                id: 7,
+                title: "A Crise Final: A Peste Negra",
+                description: "A Peste Bubônica chega da Ásia. Corpos se acumulam. O povo acha que é castigo divino.",
+                concept: "O Fim da Idade Média",
+                options: [
+                    {
+                        text: "Isolar o Castelo",
+                        effect: { gold: 0, army: -10, church: 0, people: -40 },
+                        feedback: "Sobrevivência fria. Você se isolou enquanto os servos morriam."
+                    },
+                    {
+                        text: "Rezar em multidão",
+                        effect: { gold: -10, army: 0, church: +10, people: -50 },
+                        feedback: "Erro fatal. As procissões aglomeraram as pessoas e a peste se espalhou mais rápido."
+                    }
+                ]
+            }
+        ];
+
+        // Embaralhar opções
+        const scenarios = baseScenarios.map(scenario => ({
+            ...scenario,
+            options: shuffleArray(scenario.options)
+        }));
+
+        // --- COMPONENTE STATBAR ---
+        const StatBar = (icon, value, label, color) => `
+            <div class="flex flex-col items-center w-1/4 relative group">
+                <div class="p-2 rounded-full border-2 mb-1 bg-stone-100 border-stone-400 ${value <= 20 ? 'animate-pulse border-red-500' : ''}">
+                    <i data-lucide="${icon}" class="w-5 h-5 ${color}"></i>
+                </div>
+                <div class="w-full bg-[#dcd0c0] h-2 rounded-full overflow-hidden border border-[#8b7e66]">
+                    <div class="h-full transition-all duration-500 ${value <= 20 ? 'bg-red-700' : 'bg-[#b8860b]'}" style="width: ${Math.max(0, Math.min(100, value))}%"></div>
+                </div>
+                <span class="text-[10px] font-bold mt-1 font-serif text-[#5c4033] uppercase">${label}</span>
+                <div class="absolute -bottom-6 opacity-0 group-hover:opacity-100 text-xs font-bold bg-white px-1 rounded transition-opacity z-50 border border-black shadow-sm">
+                    ${value}
+                </div>
+            </div>
+        `;
+
+        // --- ESTADO DO JOGO ---
+        let gameState = 'start';
+        let currentScenarioIndex = 0;
+        let stats = { gold: 50, army: 50, church: 50, people: 50 };
+        let lastFeedback = "";
+        let pendingGameOverCheck = false;
+
+        // --- FUNÇÕES DO JOGO ---
+        const checkGameOver = (newStats) => {
+            if (newStats.gold <= 0) return "FALÊNCIA: Sem ouro, mercenários saquearam o castelo.";
+            if (newStats.army <= 0) return "INVASÃO: Sem exército, bárbaros tomaram suas terras.";
+            if (newStats.church <= 0) return "EXCOMUNHÃO: O Papa declarou você herege.";
+            if (newStats.people <= 0) return "REVOLTA: Servos famintos invadiram e queimaram o castelo.";
+            return null;
+        };
+
+        const handleOptionChoose = (option) => {
+            // Tocar som de clique
+            playSound(clickSound);
+            
+            // Atualizar estatísticas
+            const newStats = {
+                gold: stats.gold + option.effect.gold,
+                army: stats.army + option.effect.army,
+                church: stats.church + option.effect.church,
+                people: stats.people + option.effect.people
+            };
+            
+            stats = newStats;
+            lastFeedback = option.feedback;
+            
+            // Verificar se há game over, mas não mudar o estado ainda
+            const lossReason = checkGameOver(newStats);
+            if (lossReason) {
+                pendingGameOverCheck = true;
+                window.pendingLossReason = lossReason;
+            } else {
+                pendingGameOverCheck = false;
+            }
+            
+            // Sempre mostrar o feedback primeiro
+            gameState = 'feedback';
+            renderGame();
+        };
+
+        const handleContinueFromFeedback = () => {
+            // Tocar som de clique
+            playSound(clickSound);
+            
+            // Se há um game over pendente, mostrar tela de game over
+            if (pendingGameOverCheck && window.pendingLossReason) {
+                lastFeedback = window.pendingLossReason;
+                gameState = 'gameover';
+                pendingGameOverCheck = false;
+                delete window.pendingLossReason;
+                // Tocar som de game over
+                playSound(gameOverSound);
+            } 
+            // Caso contrário, verificar se é o último cenário
+            else if (currentScenarioIndex + 1 >= scenarios.length) {
+                gameState = 'victory';
+                // Tocar som de vitória
+                playSound(victorySound);
+            } else {
+                currentScenarioIndex++;
+                gameState = 'playing';
+            }
+            renderGame();
+        };
+
+        const restartGame = () => {
+            // Tocar som de clique
+            playSound(clickSound);
+            
+            stats = { gold: 50, army: 50, church: 50, people: 50 };
+            currentScenarioIndex = 0;
+            gameState = 'start';
+            pendingGameOverCheck = false;
+            if (window.pendingLossReason) {
+                delete window.pendingLossReason;
+            }
+            renderGame();
+        };
+
+        // Funções de controle de áudio
+        const toggleMusic = () => {
+            musicEnabled = !musicEnabled;
+            if (musicEnabled) {
+                playBackgroundMusic();
+            } else {
+                pauseBackgroundMusic();
+            }
+            renderGame();
+        };
+        
+        const toggleSoundEffects = () => {
+            soundEffectsEnabled = !soundEffectsEnabled;
+            renderGame();
+        };
+
+        // --- RENDERIZAÇÃO PRINCIPAL ---
+        const renderGame = () => {
+            const root = document.getElementById('root');
+            
+            let content = '';
+            
+            if (gameState === 'start') {
+                content = `
+                    <div class="flex flex-col items-center justify-center h-full py-8 relative z-10 animate-in fade-in zoom-in">
+                        <div class="w-48 h-48 mb-6 shadow-lg rounded overflow-hidden border-4 border-[#8B4513]">
+                            ${MedievalArt({ scenarioId: 1 })}
+                        </div>
+                        <h2 class="text-4xl font-serif font-bold mb-4 text-center">Bem-vindo, Lorde</h2>
+                        <p class="text-lg mb-8 font-serif italic max-w-md text-center">
+                            "Para vencer, aja como um verdadeiro Senhor Feudal: equilibre a espada, a cruz e o pão."
+                        </p>
+                        <button onclick="window.startGame()" 
+                                class="bg-[#8B4513] hover:bg-[#6d360f] text-[#f4e4bc] text-xl font-bold py-4 px-12 rounded shadow-lg active:scale-95 transition-transform font-serif uppercase tracking-widest cursor-pointer border-2 border-[#5c4033] mb-4">
+                            Iniciar Reinado
+                        </button>
+                        
+                        <div class="flex gap-4 mt-4">
+                            <button onclick="window.toggleMusic()" 
+                                    class="music-btn flex items-center gap-2 bg-[#5c4033] hover:bg-[#4a3b2a] text-[#f4e4bc] py-2 px-4 rounded font-serif ${musicEnabled ? 'pulse-glow' : ''}">
+                                <i data-lucide="${musicEnabled ? 'volume-2' : 'volume-x'}" class="w-5 h-5"></i>
+                                ${musicEnabled ? 'Música Ligada' : 'Música Desligada'}
+                            </button>
+                            
+                            <button onclick="window.toggleSoundEffects()" 
+                                    class="music-btn flex items-center gap-2 bg-[#5c4033] hover:bg-[#4a3b2a] text-[#f4e4bc] py-2 px-4 rounded font-serif ${soundEffectsEnabled ? '' : 'opacity-70'}">
+                                <i data-lucide="${soundEffectsEnabled ? 'bell' : 'bell-off'}" class="w-5 h-5"></i>
+                                Sons
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+            else if (gameState === 'playing') {
+                const scenario = scenarios[currentScenarioIndex];
+                content = `
+                    <div class="flex flex-col md:flex-row gap-6 relative z-10 animate-in slide-in-from-right">
+                        <div class="md:w-1/2 h-64 md:h-auto shadow-lg border-4 border-[#8B4513]">
+                            ${MedievalArt({ scenarioId: scenario.id })}
+                        </div>
+                        <div class="md:w-1/2 flex flex-col justify-center">
+                            <div class="mb-4 border-b border-[#8B4513] pb-2">
+                                <span class="text-[#8B4513] font-bold text-xs tracking-widest uppercase block mb-1">
+                                    Ano ${1000 + (currentScenarioIndex * 40)} d.C.
+                                </span>
+                                <h2 class="text-3xl font-bold font-serif leading-tight">${scenario.title}</h2>
+                            </div>
+                            <p class="text-lg mb-6 font-serif leading-relaxed">
+                                ${scenario.description}
+                            </p>
+                            <div class="flex flex-col gap-3">
+                                ${scenario.options.map((option, idx) => `
+                                    <button onclick="window.chooseOption(${currentScenarioIndex}, ${idx})"
+                                            class="p-4 bg-[#eaddcf] border-2 border-[#8B4513] hover:bg-[#dccbb6] text-left shadow transition-colors font-serif font-bold text-[#4a3b2a] active:bg-[#cbbba6] group">
+                                        <span class="text-[#8B4513] mr-2 group-hover:text-black">${String.fromCharCode(65 + idx)}.</span>
+                                        ${option.text}
+                                    </button>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            else if (gameState === 'feedback') {
+                // Mostrar estatísticas atualizadas no feedback
+                const statsDisplay = `
+                    <div class="mt-4 mb-6 bg-[#f4e4bc] p-3 rounded shadow border border-[#8B4513]/30">
+                        <div class="flex justify-between">
+                            ${StatBar('coins', stats.gold, 'Ouro', 'text-[#b8860b]')}
+                            ${StatBar('cross', stats.church, 'Fé', 'text-purple-800')}
+                            ${StatBar('users', stats.army, 'Tropas', 'text-blue-900')}
+                            ${StatBar('heart', stats.people, 'Povo', 'text-green-800')}
+                        </div>
+                    </div>
+                `;
+                
+                // Adicionar aviso se alguma estatística estiver crítica
+                let warningMessage = '';
+                if (stats.gold <= 20 || stats.army <= 20 || stats.church <= 20 || stats.people <= 20) {
+                    warningMessage = `
+                        <div class="mt-2 mb-4 p-2 bg-red-100 border border-red-300 rounded text-red-700 text-sm">
+                            ⚠️ Atenção! Alguma de suas estatísticas está muito baixa. Tome cuidado nas próximas decisões!
+                        </div>
+                    `;
+                }
+                
+                content = `
+                    <div class="bg-[#f4e4bc] p-8 rounded border-4 double border-[#8B4513] text-center max-w-xl mx-auto mt-8 shadow-xl relative z-10 animate-in zoom-in">
+                        <i data-lucide="book-open" class="w-8 h-8 mx-auto mb-4 text-[#8B4513]"></i>
+                        <h3 class="text-xl font-serif font-bold mb-4 text-[#8B4513] uppercase tracking-widest">Lição de História</h3>
+                        <p class="text-xl font-serif italic mb-4">"${lastFeedback}"</p>
+                        ${statsDisplay}
+                        ${warningMessage}
+                        <button onclick="window.continueFromFeedback()"
+                                class="bg-[#8B4513] text-[#f4e4bc] py-3 px-8 rounded font-bold font-serif hover:bg-[#6d360f] transition-colors flex items-center justify-center mx-auto mt-4">
+                            Continuar <i data-lucide="arrow-right" class="ml-2 w-5 h-5"></i>
+                        </button>
+                    </div>
+                `;
+            }
+            else if (gameState === 'victory') {
+                content = `
+                    <div class="bg-[#f4e4bc] p-8 md:p-10 rounded border-4 border-[#8B4513] text-center max-w-3xl mx-auto mt-8 shadow-2xl relative z-10 animate-in zoom-in">
+                        <!-- Imagem de vitória -->
+                        <div class="w-full h-48 md:h-64 mb-6 rounded-lg overflow-hidden border-4 border-[#D4AF37] shadow-lg">
+                            ${MedievalArt({ scenarioId: 'victory' })}
+                        </div>
+                        
+                        <h2 class="text-4xl md:text-5xl font-bold mb-4 font-serif text-[#b8860b]">
+                            Dinastia Lendária!
+                        </h2>
+                        <h3 class="text-2xl md:text-3xl font-serif mb-6 text-[#8B4513]">
+                            👑 Reinado Bem-Sucedido 👑
+                        </h3>
+                        
+                        <p class="text-lg mb-8 font-serif italic text-[#5c4033] max-w-2xl mx-auto">
+                            ${lastFeedback || "Você governou com sabedoria, equilíbrio e força, estabelecendo uma dinastia que será lembrada por séculos!"}
+                        </p>
+                        
+                        <div class="mb-8 bg-[#f4e4bc] p-4 rounded shadow border border-[#8B4513]/30 max-w-md mx-auto">
+                            <h4 class="text-xl font-serif font-bold mb-3 text-[#8B4513]">Estatísticas Finais</h4>
+                            <div class="flex justify-between">
+                                ${StatBar('coins', stats.gold, 'Ouro', 'text-[#b8860b]')}
+                                ${StatBar('cross', stats.church, 'Fé', 'text-purple-800')}
+                                ${StatBar('users', stats.army, 'Tropas', 'text-blue-900')}
+                                ${StatBar('heart', stats.people, 'Povo', 'text-green-800')}
+                            </div>
+                        </div>
+                        
+                        <div class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg max-w-md mx-auto">
+                            <p class="font-serif text-[#8B4513]">
+                                <i data-lucide="award" class="inline w-5 h-5 mr-2 text-[#D4AF37]"></i>
+                                <strong>Conquista Desbloqueada:</strong> Mestre do Feudalismo
+                            </p>
+                        </div>
+                        
+                        <button onclick="window.restartGame()"
+                                class="bg-[#4a3b2a] text-[#f4e4bc] py-3 px-8 rounded font-bold flex items-center justify-center mx-auto hover:bg-black transition-colors font-serif uppercase tracking-widest text-lg">
+                            <i data-lucide="rotate-ccw" class="mr-2"></i> Jogar Novamente
+                        </button>
+                    </div>
+                `;
+            }
+            else if (gameState === 'gameover') {
+                content = `
+                    <div class="bg-[#f4e4bc] p-8 md:p-10 rounded border-4 border-[#8B4513] text-center max-w-xl mx-auto mt-8 shadow-2xl relative z-10 animate-in zoom-in">
+                        <h2 class="text-4xl font-bold mb-4 font-serif text-[#8B0000]">
+                            Fim da Linhagem
+                        </h2>
+                        <div class="mb-6">
+                            <i data-lucide="skull" class="w-16 h-16 mx-auto text-[#8B0000] mb-4"></i>
+                        </div>
+                        <p class="text-lg mb-8 font-serif italic text-[#5c4033]">${lastFeedback}</p>
+                        <div class="mb-6 bg-[#f4e4bc] p-3 rounded shadow border border-[#8B4513]/30">
+                            <div class="flex justify-between">
+                                ${StatBar('coins', stats.gold, 'Ouro', 'text-[#b8860b]')}
+                                ${StatBar('cross', stats.church, 'Fé', 'text-purple-800')}
+                                ${StatBar('users', stats.army, 'Tropas', 'text-blue-900')}
+                                ${StatBar('heart', stats.people, 'Povo', 'text-green-800')}
+                            </div>
+                        </div>
+                        <button onclick="window.restartGame()"
+                                class="bg-[#4a3b2a] text-[#f4e4bc] py-3 px-8 rounded font-bold flex items-center justify-center mx-auto hover:bg-black transition-colors font-serif uppercase tracking-widest">
+                            <i data-lucide="rotate-ccw" class="mr-2"></i> Tentar Novamente
+                        </button>
+                    </div>
+                `;
+            }
+
+            const statusBar = gameState !== 'start' && gameState !== 'gameover' && gameState !== 'victory' && gameState !== 'feedback' ? `
+                <div class="flex justify-between mb-6 bg-[#f4e4bc] p-3 rounded shadow border border-[#8B4513]/30 relative z-10">
+                    ${StatBar('coins', stats.gold, 'Ouro', 'text-[#b8860b]')}
+                    ${StatBar('cross', stats.church, 'Fé', 'text-purple-800')}
+                    ${StatBar('users', stats.army, 'Tropas', 'text-blue-900')}
+                    ${StatBar('heart', stats.people, 'Povo', 'text-green-800')}
+                </div>
+            ` : '';
+
+            // Botões de controle de áudio (exceto na tela inicial)
+            const audioControls = gameState !== 'start' ? `
+                <div class="absolute top-4 right-4 flex gap-2 z-30">
+                    <button onclick="window.toggleMusic()" 
+                            class="music-btn flex items-center gap-1 bg-[#4a3b2a]/80 hover:bg-[#4a3b2a] text-[#f4e4bc] p-2 rounded-full font-serif ${musicEnabled ? 'pulse-glow' : ''}"
+                            title="${musicEnabled ? 'Desligar música' : 'Ligar música'}">
+                        <i data-lucide="${musicEnabled ? 'volume-2' : 'volume-x'}" class="w-4 h-4"></i>
+                    </button>
+                    
+                    <button onclick="window.toggleSoundEffects()" 
+                            class="music-btn flex items-center gap-1 bg-[#4a3b2a]/80 hover:bg-[#4a3b2a] text-[#f4e4bc] p-2 rounded-full font-serif ${soundEffectsEnabled ? '' : 'opacity-70'}"
+                            title="${soundEffectsEnabled ? 'Desligar sons' : 'Ligar sons'}">
+                        <i data-lucide="${soundEffectsEnabled ? 'bell' : 'bell-off'}" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            ` : '';
+
+            root.innerHTML = `
+                <div class="min-h-screen bg-[#2c241b] flex items-center justify-center p-2 md:p-6 font-sans text-[#4a3b2a]">
+                    <div class="w-full max-w-4xl bg-[#dcd0c0] rounded shadow-2xl overflow-hidden border-[8px] border-[#3d2b1f] relative flex flex-col min-h-[600px]">
+                        <div class="bg-[#4a3b2a] text-[#f4e4bc] p-4 border-b-4 border-[#8B4513] flex justify-between items-center z-20 relative">
+                            <div class="flex items-center gap-3">
+                                <i data-lucide="shield" class="w-6 h-6 text-[#b8860b]"></i>
+                                <h1 class="text-2xl font-bold font-serif tracking-widest uppercase">Ecos do Feudo</h1>
+                            </div>
+                            <div class="text-xs opacity-70 font-serif">Edição Didática</div>
+                            ${audioControls}
+                        </div>
+                        
+                        <div class="flex-1 p-4 md:p-8 relative bg-[#dcd0c0]">
+                            <div class="absolute inset-0 opacity-10 bg-[radial-gradient(circle,#8B4513_1px,transparent_1px)] bg-[length:20px_20px] pointer-events-none z-0"></div>
+                            ${statusBar}
+                            ${content}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Atualizar ícones
+            lucide.createIcons();
+        };
+
+        // --- EXPORTA FUNÇÕES PARA O WINDOW ---
+        window.startGame = () => {
+            playSound(clickSound);
+            gameState = 'playing';
+            renderGame();
+        };
+
+        window.chooseOption = (scenarioIndex, optionIndex) => {
+            if (scenarioIndex === currentScenarioIndex) {
+                handleOptionChoose(scenarios[scenarioIndex].options[optionIndex]);
+            }
+        };
+
+        window.continueFromFeedback = handleContinueFromFeedback;
+        window.restartGame = restartGame;
+        window.toggleMusic = toggleMusic;
+        window.toggleSoundEffects = toggleSoundEffects;
+
+        // Inicializar o jogo
+        renderGame();
+        
+        // Tentar tocar música de fundo automaticamente (com volume baixo)
+        setTimeout(() => {
+            if (musicEnabled) {
+                playBackgroundMusic();
+            }
+        }, 1000);
+    </script>
+</body>
+</html>
