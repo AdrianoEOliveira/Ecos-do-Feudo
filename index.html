@@ -537,6 +537,8 @@
                 `;
             }
             else if (gameState === 'playing') {
+                const vector = [ 1000, 1040, 1080, 1120, 1160, 1200, 1240, 1350
+                ];
                 const scenario = scenarios[currentScenarioIndex];
                 content = `
                     <div class="flex flex-col md:flex-row gap-6 relative z-10 animate-in slide-in-from-right">
@@ -546,7 +548,7 @@
                         <div class="md:w-1/2 flex flex-col justify-center">
                             <div class="mb-4 border-b border-[#8B4513] pb-2">
                                 <span class="text-[#8B4513] font-bold text-xs tracking-widest uppercase block mb-1">
-                                    Ano ${1000 + (currentScenarioIndex * 40)} d.C.
+                                    Ano ${(vector[currentScenarioIndex])} d.C.
                                 </span>
                                 <h2 class="text-3xl font-bold font-serif leading-tight">${scenario.title}</h2>
                             </div>
